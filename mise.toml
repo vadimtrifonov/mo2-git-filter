@@ -1,0 +1,23 @@
+[tools]
+zig = "0.17.0"
+
+[tasks.build]
+run = [
+    'if not exist artifacts mkdir artifacts',
+    'zig build-exe main.zig -target x86_64-windows -mcpu=baseline -O ReleaseSafe -fstrip -femit-bin=artifacts/mo2-git-filter.exe',
+]
+
+[tasks.test]
+depends = ["test:unit", "test:git"]
+
+[tasks."test:unit"]
+run = "zig test main.zig"
+
+[tasks."test:git"]
+depends = ["build"]
+env = { MO2_FILTER_EXE = "artifacts/mo2-git-filter.exe" }
+run = "zig test integration.zig"
+
+[tasks.publish]
+depends = ["test"]
+run = '"%SystemRoot%\System32\tar.exe" -a -c -f artifacts/mo2-git-filter-win-x64.zip -C artifacts mo2-git-filter.exe -C .. LICENSE'

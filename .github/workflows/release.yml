@@ -1,0 +1,44 @@
+name: Release
+
+on:
+  push:
+    tags:
+      - "v*.*.*"
+
+permissions:
+  contents: write
+
+jobs:
+  release:
+    runs-on: windows-latest
+
+    steps:
+      - name: Check out source
+        uses: actions/checkout@v6
+
+      - name: Validate release tag
+        shell: pwsh
+        run: |
+          if ($env:GITHUB_REF_NAME -notmatch '^v\d+\.\d+\.\d+$') {
+            throw "Release tag must have the form v1.2.3."
+          }
+
+      - name: Set up mise
+        uses: jdx/mise-action@v4
+
+      - name: Build, test, and package
+        run: mise run publish
+
+      - name: Create GitHub release
+        shell: pwsh
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          $version = $env:GITHUB_REF_NAME.Substring(1)
+          $archive = "artifacts/mo2-git-filter-$version-win-x64.zip"
+          Move-Item artifacts/mo2-git-filter-win-x64.zip $archive
+          gh release create $env:GITHUB_REF_NAME `
+            $archive `
+            --verify-tag `
+            --title $env:GITHUB_REF_NAME `
+            --generate-notes
